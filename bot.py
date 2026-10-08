@@ -314,16 +314,15 @@ if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
                 
             end_time = time.time()
             latency_ms = round((end_time - start_time) * 1000, 2)
-            message_placeholder.markdown(full_response)
-            
             metrics_info = f"⚡ **Inference Latency:** {latency_ms} ms | **Engine:** Groq LPU"
-            st.caption(metrics_info)
 
             # Persist assistant reply
             if st.session_state.is_guest:
                 st.session_state.guest_messages.append({"role": "assistant", "content": full_response, "metrics": metrics_info})
             else:
                 save_message(st.session_state.current_chat_id, "assistant", full_response, metrics_info)
+
+            st.rerun()
 
         except Exception as e:
             st.error(f"Inference Error: {str(e)}")
