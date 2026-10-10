@@ -189,12 +189,12 @@ if not st.session_state.logged_in:
     st.stop()
 
 
-# ----------------- HACKY CSS REMOVED (Clean UI setup) -----------------
+# ----------------- CLEAN UI SETUP -----------------
 st.markdown("""
 <style>
-/* HIDE STREAMLIT BRANDING & FOOTER ONLY */
+/* HIDE STREAMLIT FOOTER AND MAIN MENU ONLY - Header hide nahi kiya taaki arrow bacha rahe */
 footer { visibility: hidden !important; }
-header { visibility: hidden !important; }
+#MainMenu { visibility: hidden !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -357,3 +357,4 @@ if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
 
         except Exception as e:
             st.error(f"Inference Error: {str(e)}")
+            
