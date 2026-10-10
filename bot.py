@@ -98,6 +98,14 @@ def create_new_chat(username, title="New Consultation"):
     conn.close()
     return chat_id
 
+# NAYA FUNCTION: Chat ka title update karne ke liye
+def update_chat_title(chat_id, new_title):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE chats SET title = ? WHERE chat_id = ?", (new_title, chat_id))
+    conn.commit()
+    conn.close()
+
 def save_message(chat_id, role, content, metrics=""):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -116,7 +124,7 @@ def get_chat_messages(chat_id):
 init_db()
 
 # ----------------- APP CONFIG -----------------
-st.set_page_config(page_title="AI Network Advisor", page_icon="🌐", layout="wide")
+st.set_page_config(page_title="Network Advisor", page_icon="📡", layout="wide")
 
 # Session state initialization
 if "logged_in" not in st.session_state:
@@ -130,7 +138,7 @@ if "logged_in" not in st.session_state:
 if not st.session_state.logged_in:
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.markdown("<h2 style='text-align: center;'>🌐 AI-Powered Network Advisor</h2>", unsafe_allow_html=True)
+        st.markdown("<h2 style='text-align: center;'>📡 Network Advisor <span style='font-size: 18px; font-weight: normal; color: #888888;'>AI-powered</span></h2>", unsafe_allow_html=True)
         st.caption("<p style='text-align: center;'>Enterprise LPU Diagnostic & Triage Console</p>", unsafe_allow_html=True)
         
         tab1, tab2, tab3 = st.tabs(["🔑 Login", "📝 Sign Up", "👤 Guest Access"])
@@ -177,11 +185,18 @@ if not st.session_state.logged_in:
 
 # ----------------- MAIN CHAT INTERFACE -----------------
 
-# API KEY Setup
 api_key = os.environ.get("GROQ_API_KEY")
 
 with st.sidebar:
-    st.subheader(f"👋 Welcome, {st.session_state.full_name}")
+    # Circular Avatar Profile Update
+    avatar_seed = st.session_state.username if st.session_state.username else "Guest"
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; margin-bottom: 20px;">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed={avatar_seed}" style="border-radius: 50%; width: 45px; height: 45px; margin-right: 12px; border: 2px solid #ff4b4b;">
+        <h3 style="margin: 0; font-size: 18px;">Welcome, {st.session_state.full_name}</h3>
+    </div>
+    <hr style="margin-top: 0px;">
+    """, unsafe_allow_html=True)
     
     if not api_key:
         api_key = st.text_input("Groq API Key:", type="password")
@@ -190,7 +205,6 @@ with st.sidebar:
             
     st.divider()
 
-    # Chat Sessions Management
     if not st.session_state.is_guest:
         if st.button("➕ New Chat", use_container_width=True):
             st.session_state.current_chat_id = create_new_chat(st.session_state.username)
@@ -210,7 +224,6 @@ with st.sidebar:
 
     st.divider()
 
-    # Profile & Account Management
     with st.expander("⚙️ Account Settings"):
         if not st.session_state.is_guest:
             new_fname = st.text_input("Update Name", value=st.session_state.full_name)
@@ -235,7 +248,6 @@ with st.sidebar:
         st.session_state.username = None
         st.rerun()
 
-# Client Init Check
 if not api_key:
     st.info("Enter your Groq API Key in the left sidebar to activate the AI reasoning pipeline.")
     st.stop()
@@ -247,38 +259,44 @@ SYSTEM_PROMPT = (
     "Provide concise, technically accurate solutions, command-line triage steps, and RFC-compliant diagnostic guidance."
 )
 
-# Load Active Messages
 if st.session_state.is_guest:
     messages = st.session_state.guest_messages
 else:
     messages = get_chat_messages(st.session_state.current_chat_id)
 
-st.markdown("# 🌐 Network Advisor <span style='font-size: 22px; font-weight: normal; color: #888888;'>AI-powered</span>", unsafe_allow_html=True)
+# Chat Header Update (Smaller, top aligned)
+st.markdown("<h2 style='text-align: left; margin-top: -40px;'>📡 Network Advisor <span style='font-size: 16px; font-weight: normal; color: #888888;'>AI-powered</span></h2>", unsafe_allow_html=True)
 st.caption("Deterministic LPU Acceleration | OSPF, BGP, TCP & Multi-Vendor Diagnostics")
 
-# Render Messages
 for m in messages:
     with st.chat_message(m["role"]):
         st.markdown(m["content"])
         if m.get("metrics"):
             st.caption(m["metrics"])
 
-# File Uploader
-uploaded_file = st.file_uploader("📎 Attach Network Config / Diagnostic Log File (TXT, LOG, CONF)", type=["txt", "log", "conf", "csv"])
+# Popover File Uploader (Space saving)
 file_context = ""
-if uploaded_file is not None:
-    try:
-        file_content = uploaded_file.read().decode("utf-8")
-        file_context = f"\n\n[ATTACHED FILE CONTENT ({uploaded_file.name})]:\n```\n{file_content}\n```"
-        st.success(f"Attached: {uploaded_file.name}")
-    except Exception as e:
-        st.error("Failed to parse file text.")
+with st.popover("📎 Attach File"):
+    uploaded_file = st.file_uploader("Upload Network Config/Log", type=["txt", "log", "conf", "csv"], label_visibility="collapsed")
+    if uploaded_file is not None:
+        try:
+            file_content = uploaded_file.read().decode("utf-8")
+            file_context = f"\n\n[ATTACHED FILE CONTENT ({uploaded_file.name})]:\n```\n{file_content}\n```"
+            st.success(f"Attached: {uploaded_file.name}")
+        except Exception as e:
+            st.error("Failed to parse file text.")
 
-# Chat Input Handler
 if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
     combined_query = prompt + file_context
     
-    # Save & Display User Message
+    # Auto-rename chat based on first query
+    if not st.session_state.is_guest and len(messages) == 0:
+        new_title = prompt[:25] + "..." if len(prompt) > 25 else prompt
+        try:
+            update_chat_title(st.session_state.current_chat_id, new_title)
+        except Exception:
+            pass
+            
     if st.session_state.is_guest:
         st.session_state.guest_messages.append({"role": "user", "content": combined_query, "metrics": ""})
     else:
@@ -287,14 +305,12 @@ if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
     with st.chat_message("user"):
         st.markdown(combined_query)
 
-    # Stream Response
     with st.chat_message("assistant"):
         message_placeholder = st.empty()
         full_response = ""
         
         start_time = time.time()
         try:
-            # Build conversation payload
             conversation_history = [{"role": "system", "content": SYSTEM_PROMPT}]
             for msg in (st.session_state.guest_messages if st.session_state.is_guest else get_chat_messages(st.session_state.current_chat_id)):
                 conversation_history.append({"role": msg["role"], "content": msg["content"]})
@@ -315,14 +331,14 @@ if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
             end_time = time.time()
             latency_ms = round((end_time - start_time) * 1000, 2)
             metrics_info = f"⚡ **Inference Latency:** {latency_ms} ms | **Engine:** Groq LPU"
+            
+            message_placeholder.markdown(full_response)
+            st.caption(metrics_info)
 
-            # Persist assistant reply
             if st.session_state.is_guest:
                 st.session_state.guest_messages.append({"role": "assistant", "content": full_response, "metrics": metrics_info})
             else:
                 save_message(st.session_state.current_chat_id, "assistant", full_response, metrics_info)
-
-            st.rerun()
 
         except Exception as e:
             st.error(f"Inference Error: {str(e)}")
