@@ -2,6 +2,7 @@ import os
 import time
 import sqlite3
 import hashlib
+import secrets
 import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()
@@ -13,11 +14,19 @@ DB_FILE = "network_advisor.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
+    # Users Table (Added session_token for secure login)
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
                     password_hash TEXT,
-                    full_name TEXT
+                    full_name TEXT,
+                    session_token TEXT
                 )''')
+    # Update existing database table if it doesn't have the session_token column
+    try:
+        c.execute("ALTER TABLE users ADD COLUMN session_token TEXT")
+    except sqlite3.OperationalError:
+        pass # Column already exists
+        
     c.execute('''CREATE TABLE IF NOT EXISTS chats (
                     chat_id TEXT PRIMARY KEY,
                     username TEXT,
@@ -48,19 +57,11 @@ def verify_user(username, password):
         return row[1]
     return None
 
-def get_user_fullname(username):
-    conn = sqlite3.connect(DB_FILE)
-    c = conn.cursor()
-    c.execute("SELECT full_name FROM users WHERE username = ?", (username,))
-    row = c.fetchone()
-    conn.close()
-    return row[0] if row else None
-
 def create_user(username, password, full_name):
     try:
         conn = sqlite3.connect(DB_FILE)
         c = conn.cursor()
-        c.execute("INSERT INTO users VALUES (?, ?, ?)", (username, hash_pass(password), full_name))
+        c.execute("INSERT INTO users VALUES (?, ?, ?, NULL)", (username, hash_pass(password), full_name))
         conn.commit()
         conn.close()
         return True
@@ -125,27 +126,52 @@ def get_chat_messages(chat_id):
     conn.close()
     return [{"role": r, "content": ct, "metrics": m} for r, ct, m in msgs]
 
+# --- SECURE SESSION FUNCTIONS ---
+def create_session(username):
+    token = secrets.token_hex(16) # Generate random 32-character secure string
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE users SET session_token = ? WHERE username = ?", (token, username))
+    conn.commit()
+    conn.close()
+    return token
+
+def verify_session(token):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT username, full_name FROM users WHERE session_token = ?", (token,))
+    row = c.fetchone()
+    conn.close()
+    return row if row else (None, None)
+
+def destroy_session(username):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("UPDATE users SET session_token = NULL WHERE username = ?", (username,))
+    conn.commit()
+    conn.close()
+
 init_db()
 
 # ----------------- APP CONFIG -----------------
 st.set_page_config(page_title="Network Advisor", page_icon="📡", layout="wide")
 
-# ----------------- URL QUERY PARAMETER LOGIN -----------------
-# Read URL parameter (e.g., ?user=deep)
-saved_username = st.query_params.get("user")
+# ----------------- SECURE URL PARAMETER LOGIN -----------------
+saved_token = st.query_params.get("session")
 
 if "logged_in" not in st.session_state:
-    if saved_username:
-        fullname = get_user_fullname(saved_username)
-        if fullname:
+    if saved_token:
+        # Check if this token is alive in the database
+        u, fname = verify_session(saved_token)
+        if u:
             st.session_state.logged_in = True
-            st.session_state.username = saved_username
-            st.session_state.full_name = fullname
+            st.session_state.username = u
+            st.session_state.full_name = fname
             st.session_state.is_guest = False
-            user_chats = get_user_chats(saved_username)
-            st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(saved_username)
+            user_chats = get_user_chats(u)
+            st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u)
         else:
-            # Fake/Invalid URL param, clear it
+            # Token is dead, deleted, or fake. Reject login.
             st.query_params.clear()
             st.session_state.logged_in = False
             st.session_state.username = None
@@ -174,8 +200,9 @@ if not st.session_state.get("logged_in", False):
                 if submit_login:
                     fname = verify_user(u, p)
                     if fname:
-                        # Set URL Query Parameter for persistence
-                        st.query_params["user"] = u
+                        # Create a secure session token and put it in URL
+                        token = create_session(u)
+                        st.query_params["session"] = token
                         
                         st.session_state.logged_in = True
                         st.session_state.username = u
@@ -276,6 +303,7 @@ with st.sidebar:
             
             st.divider()
             if st.button("🗑️ Delete Account", type="primary"):
+                destroy_session(st.session_state.username) # Kill token
                 st.query_params.clear()
                 delete_user_account(st.session_state.username)
                 st.session_state.logged_in = False
@@ -285,6 +313,8 @@ with st.sidebar:
             st.write("Guest users have no stored account data.")
 
     if st.button("🚪 Log Out", use_container_width=True):
+        if not st.session_state.is_guest:
+            destroy_session(st.session_state.username) # KILL THE TOKEN ON LOGOUT!
         st.query_params.clear()
         st.session_state.logged_in = False
         st.session_state.username = None
