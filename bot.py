@@ -269,9 +269,12 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
+# ---------- YAHAN STRICT PROMPT LAGA DIYA HAI ----------
 SYSTEM_PROMPT = (
     "You are an expert IT & Network Support Engineer. "
-    "Provide concise, technically accurate solutions, command-line triage steps, and RFC-compliant diagnostic guidance."
+    "Provide concise, technically accurate solutions, command-line triage steps, and RFC-compliant diagnostic guidance. "
+    "STRICT INSTRUCTION: You must ONLY answer questions related to networking, IT infrastructure, servers, and cybersecurity. "
+    "If a user asks about unrelated topics (like room decor, smartphones, movies, general knowledge, etc.), clearly and politely decline by stating that you are a Network Advisor and cannot help with non-IT queries."
 )
 
 if st.session_state.is_guest:
@@ -357,4 +360,3 @@ if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
 
         except Exception as e:
             st.error(f"Inference Error: {str(e)}")
-            
