@@ -278,9 +278,6 @@ with st.sidebar:
         if not api_key:
             st.warning("Please provide a Groq API key to proceed.")
             
-    # ROLE SWITCHER
-    selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()))
-            
     st.divider()
 
     if not st.session_state.is_guest:
@@ -368,6 +365,14 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
+# --- MAIN CHAT HEADER AND ROLE SWITCHER ---
+head_col1, head_col2 = st.columns([3, 1])
+with head_col1:
+    st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network Advisor</h2>", unsafe_allow_html=True)
+    st.caption("Deterministic LPU Acceleration | Multi-Vendor Diagnostics")
+with head_col2:
+    selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
+
 # Dynamic System Prompt based on selected role
 SYSTEM_PROMPT = (
     ROLE_PROMPTS[selected_role] +
@@ -380,8 +385,6 @@ if st.session_state.is_guest:
 else:
     messages = get_chat_messages(st.session_state.current_chat_id) if st.session_state.current_chat_id else []
 
-st.markdown(f"<h2 style='text-align: left; margin-top: -40px;'>📡 Network Advisor <span style='font-size: 16px; font-weight: normal; color: #888888;'>[{selected_role}]</span></h2>", unsafe_allow_html=True)
-st.caption("Deterministic LPU Acceleration | Multi-Vendor Diagnostics")
 
 for m in messages:
     with st.chat_message(m["role"]):
