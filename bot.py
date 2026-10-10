@@ -14,18 +14,16 @@ DB_FILE = "network_advisor.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Users Table (Added session_token for secure login)
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
                     password_hash TEXT,
                     full_name TEXT,
                     session_token TEXT
                 )''')
-    # Update existing database table if it doesn't have the session_token column
     try:
         c.execute("ALTER TABLE users ADD COLUMN session_token TEXT")
     except sqlite3.OperationalError:
-        pass # Column already exists
+        pass 
         
     c.execute('''CREATE TABLE IF NOT EXISTS chats (
                     chat_id TEXT PRIMARY KEY,
@@ -111,6 +109,14 @@ def update_chat_title(chat_id, new_title):
     conn.commit()
     conn.close()
 
+def delete_chat(chat_id):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("DELETE FROM messages WHERE chat_id = ?", (chat_id,))
+    c.execute("DELETE FROM chats WHERE chat_id = ?", (chat_id,))
+    conn.commit()
+    conn.close()
+
 def save_message(chat_id, role, content, metrics=""):
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
@@ -128,7 +134,7 @@ def get_chat_messages(chat_id):
 
 # --- SECURE SESSION FUNCTIONS ---
 def create_session(username):
-    token = secrets.token_hex(16) # Generate random 32-character secure string
+    token = secrets.token_hex(16) 
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
     c.execute("UPDATE users SET session_token = ? WHERE username = ?", (token, username))
@@ -161,7 +167,6 @@ saved_token = st.query_params.get("session")
 
 if "logged_in" not in st.session_state:
     if saved_token:
-        # Check if this token is alive in the database
         u, fname = verify_session(saved_token)
         if u:
             st.session_state.logged_in = True
@@ -171,7 +176,6 @@ if "logged_in" not in st.session_state:
             user_chats = get_user_chats(u)
             st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u)
         else:
-            # Token is dead, deleted, or fake. Reject login.
             st.query_params.clear()
             st.session_state.logged_in = False
             st.session_state.username = None
@@ -200,7 +204,6 @@ if not st.session_state.get("logged_in", False):
                 if submit_login:
                     fname = verify_user(u, p)
                     if fname:
-                        # Create a secure session token and put it in URL
                         token = create_session(u)
                         st.query_params["session"] = token
                         
@@ -241,11 +244,9 @@ if not st.session_state.get("logged_in", False):
                 st.rerun()
     st.stop()
 
-
 # ----------------- CLEAN UI SETUP -----------------
 st.markdown("""
 <style>
-/* HIDE STREAMLIT FOOTER AND MAIN MENU ONLY */
 footer { visibility: hidden !important; }
 #MainMenu { visibility: hidden !important; }
 </style>
@@ -254,6 +255,13 @@ footer { visibility: hidden !important; }
 
 # ----------------- MAIN CHAT INTERFACE -----------------
 api_key = os.environ.get("GROQ_API_KEY")
+
+# --- EXPERT MODES DICTIONARY ---
+ROLE_PROMPTS = {
+    "Network Engineer": "You are an expert IT & Network Support Engineer. Focus on routing protocols (OSPF, BGP), switching, TCP/IP, and enterprise network diagnostics.",
+    "Cybersecurity Analyst": "You are an elite Cybersecurity Analyst. Focus on firewalls, threat hunting, packet analysis, IPS/IDS, and zero-trust architecture.",
+    "Cloud Architect": "You are a Cloud Network Architect. Focus on AWS/Azure VPCs, cloud transit gateways, SDN troubleshooting, and hybrid cloud connectivity."
+}
 
 with st.sidebar:
     avatar_seed = st.session_state.username if st.session_state.username else "Guest"
@@ -269,6 +277,9 @@ with st.sidebar:
         api_key = st.text_input("Groq API Key:", type="password")
         if not api_key:
             st.warning("Please provide a Groq API key to proceed.")
+            
+    # ROLE SWITCHER
+    selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()))
             
     st.divider()
 
@@ -286,6 +297,37 @@ with st.sidebar:
             if col_a.button(btn_label, key=c_id, use_container_width=True):
                 st.session_state.current_chat_id = c_id
                 st.rerun()
+                
+        # --- CHAT MANAGEMENT (RENAME, DELETE, EXPORT) ---
+        if st.session_state.current_chat_id:
+            with st.expander("🛠️ Manage Current Chat"):
+                # Export functionality
+                chat_msgs = get_chat_messages(st.session_state.current_chat_id)
+                export_str = f"--- Chat Export: {st.session_state.current_chat_id} ---\n\n"
+                for m in chat_msgs:
+                    export_str += f"[{m['role'].upper()}]\n{m['content']}\n\n"
+                
+                st.download_button(
+                    label="📄 Download Export (.txt)",
+                    data=export_str,
+                    file_name=f"{st.session_state.current_chat_id}.txt",
+                    mime="text/plain",
+                    use_container_width=True
+                )
+                
+                # Rename functionality
+                new_chat_name = st.text_input("Rename Chat", placeholder="New name...")
+                if st.button("Save Name", use_container_width=True):
+                    if new_chat_name:
+                        update_chat_title(st.session_state.current_chat_id, new_chat_name)
+                        st.rerun()
+                        
+                # Delete functionality
+                if st.button("🗑️ Delete Chat", type="primary", use_container_width=True):
+                    delete_chat(st.session_state.current_chat_id)
+                    st.session_state.current_chat_id = None
+                    st.rerun()
+                    
     else:
         st.caption("Guest Session (Single volatile history)")
 
@@ -303,7 +345,7 @@ with st.sidebar:
             
             st.divider()
             if st.button("🗑️ Delete Account", type="primary"):
-                destroy_session(st.session_state.username) # Kill token
+                destroy_session(st.session_state.username) 
                 st.query_params.clear()
                 delete_user_account(st.session_state.username)
                 st.session_state.logged_in = False
@@ -314,7 +356,7 @@ with st.sidebar:
 
     if st.button("🚪 Log Out", use_container_width=True):
         if not st.session_state.is_guest:
-            destroy_session(st.session_state.username) # KILL THE TOKEN ON LOGOUT!
+            destroy_session(st.session_state.username) 
         st.query_params.clear()
         st.session_state.logged_in = False
         st.session_state.username = None
@@ -326,20 +368,20 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
+# Dynamic System Prompt based on selected role
 SYSTEM_PROMPT = (
-    "You are an expert IT & Network Support Engineer. "
-    "Provide concise, technically accurate solutions, command-line triage steps, and RFC-compliant diagnostic guidance. "
-    "STRICT INSTRUCTION: You must ONLY answer questions related to networking, IT infrastructure, servers, and cybersecurity. "
+    ROLE_PROMPTS[selected_role] +
+    " STRICT INSTRUCTION: You must ONLY answer questions related to networking, IT infrastructure, servers, and cybersecurity. "
     "If a user asks about unrelated topics (like room decor, smartphones, movies, general knowledge, etc.), clearly and politely decline by stating that you are a Network Advisor and cannot help with non-IT queries."
 )
 
 if st.session_state.is_guest:
     messages = st.session_state.guest_messages
 else:
-    messages = get_chat_messages(st.session_state.current_chat_id)
+    messages = get_chat_messages(st.session_state.current_chat_id) if st.session_state.current_chat_id else []
 
-st.markdown("<h2 style='text-align: left; margin-top: -40px;'>📡 Network Advisor <span style='font-size: 16px; font-weight: normal; color: #888888;'>AI-powered</span></h2>", unsafe_allow_html=True)
-st.caption("Deterministic LPU Acceleration | OSPF, BGP, TCP & Multi-Vendor Diagnostics")
+st.markdown(f"<h2 style='text-align: left; margin-top: -40px;'>📡 Network Advisor <span style='font-size: 16px; font-weight: normal; color: #888888;'>[{selected_role}]</span></h2>", unsafe_allow_html=True)
+st.caption("Deterministic LPU Acceleration | Multi-Vendor Diagnostics")
 
 for m in messages:
     with st.chat_message(m["role"]):
@@ -359,6 +401,11 @@ with st.popover("📎 Attach File"):
             st.error("Failed to parse file text.")
 
 if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
+    # Edge case: All chats deleted but user types something
+    if not st.session_state.is_guest and not st.session_state.current_chat_id:
+        st.session_state.current_chat_id = create_new_chat(st.session_state.username)
+        messages = []
+
     combined_query = prompt + file_context
     
     if not st.session_state.is_guest and len(messages) == 0:
