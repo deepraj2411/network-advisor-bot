@@ -6,6 +6,10 @@ import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()
 from groq import Groq
+from streamlit_cookies_controller import CookieController
+
+# Initialize Cookie Controller
+cookie_controller = CookieController()
 
 # ----------------- DATABASE SETUP -----------------
 DB_FILE = "network_advisor.db"
@@ -50,6 +54,14 @@ def verify_user(username, password):
     if row and row[0] == hash_pass(password):
         return row[1]
     return None
+
+def get_user_fullname(username):
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("SELECT full_name FROM users WHERE username = ?", (username,))
+    row = c.fetchone()
+    conn.close()
+    return row[0] if row else None
 
 def create_user(username, password, full_name):
     try:
@@ -125,16 +137,35 @@ init_db()
 # ----------------- APP CONFIG -----------------
 st.set_page_config(page_title="Network Advisor", page_icon="📡", layout="wide")
 
-# Session state initialization
+# ----------------- SESSION & COOKIE MANAGEMENT -----------------
+# Get saved user from browser cookies
+saved_username = cookie_controller.get("network_advisor_user")
+
 if "logged_in" not in st.session_state:
-    st.session_state.logged_in = False
-    st.session_state.username = None
-    st.session_state.full_name = None
-    st.session_state.is_guest = False
-    st.session_state.current_chat_id = None
+    if saved_username:
+        # Auto-login if cookie exists
+        fullname = get_user_fullname(saved_username)
+        if fullname:
+            st.session_state.logged_in = True
+            st.session_state.username = saved_username
+            st.session_state.full_name = fullname
+            st.session_state.is_guest = False
+            user_chats = get_user_chats(saved_username)
+            st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(saved_username)
+        else:
+            # Invalid user in cookie, reset
+            cookie_controller.remove("network_advisor_user")
+            st.session_state.logged_in = False
+            st.session_state.username = None
+    else:
+        st.session_state.logged_in = False
+        st.session_state.username = None
+        st.session_state.full_name = None
+        st.session_state.is_guest = False
+        st.session_state.current_chat_id = None
 
 # ----------------- LOGIN / AUTH SCREEN -----------------
-if not st.session_state.logged_in:
+if not st.session_state.get("logged_in", False):
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.markdown("<h2 style='text-align: center;'>📡 Network Advisor <span style='font-size: 18px; font-weight: normal; color: #888888;'>AI-powered</span></h2>", unsafe_allow_html=True)
@@ -151,6 +182,10 @@ if not st.session_state.logged_in:
                 if submit_login:
                     fname = verify_user(u, p)
                     if fname:
+                        # Set Browser Cookie
+                        cookie_controller.set("network_advisor_user", u)
+                        time.sleep(0.5) # Give cookie time to set
+                        
                         st.session_state.logged_in = True
                         st.session_state.username = u
                         st.session_state.full_name = fname
@@ -192,7 +227,7 @@ if not st.session_state.logged_in:
 # ----------------- CLEAN UI SETUP -----------------
 st.markdown("""
 <style>
-/* HIDE STREAMLIT FOOTER AND MAIN MENU ONLY - Header hide nahi kiya taaki arrow bacha rahe */
+/* HIDE STREAMLIT FOOTER AND MAIN MENU ONLY */
 footer { visibility: hidden !important; }
 #MainMenu { visibility: hidden !important; }
 </style>
@@ -203,7 +238,6 @@ footer { visibility: hidden !important; }
 api_key = os.environ.get("GROQ_API_KEY")
 
 with st.sidebar:
-    # Avatar and Welcome text cleanly placed INSIDE the sidebar
     avatar_seed = st.session_state.username if st.session_state.username else "Guest"
     st.markdown(f"""
     <div style="display: flex; align-items: center; margin-bottom: 20px; margin-top: 10px;">
@@ -251,6 +285,7 @@ with st.sidebar:
             
             st.divider()
             if st.button("🗑️ Delete Account", type="primary"):
+                cookie_controller.remove("network_advisor_user")
                 delete_user_account(st.session_state.username)
                 st.session_state.logged_in = False
                 st.session_state.username = None
@@ -259,8 +294,11 @@ with st.sidebar:
             st.write("Guest users have no stored account data.")
 
     if st.button("🚪 Log Out", use_container_width=True):
+        if not st.session_state.is_guest:
+            cookie_controller.remove("network_advisor_user")
         st.session_state.logged_in = False
         st.session_state.username = None
+        time.sleep(0.5)
         st.rerun()
 
 if not api_key:
@@ -269,7 +307,6 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
-# ---------- YAHAN STRICT PROMPT LAGA DIYA HAI ----------
 SYSTEM_PROMPT = (
     "You are an expert IT & Network Support Engineer. "
     "Provide concise, technically accurate solutions, command-line triage steps, and RFC-compliant diagnostic guidance. "
@@ -291,8 +328,6 @@ for m in messages:
         if m.get("metrics"):
             st.caption(m["metrics"])
 
-
-# File Uploader (Normal Flow, chatbox ke upar)
 file_context = ""
 with st.popover("📎 Attach File"):
     uploaded_file = st.file_uploader("Upload Network Config/Log", type=["txt", "log", "conf", "csv"], label_visibility="collapsed")
@@ -303,7 +338,6 @@ with st.popover("📎 Attach File"):
             st.success(f"Attached: {uploaded_file.name}")
         except Exception as e:
             st.error("Failed to parse file text.")
-
 
 if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
     combined_query = prompt + file_context
