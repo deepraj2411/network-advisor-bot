@@ -206,31 +206,6 @@ header {{ visibility: hidden !important; }}
     background-size: cover;
     pointer-events: none;
 }}
-
-/* SHIFT CHAT INPUT RIGHT TO MAKE SPACE FOR LEFT BUTTON */
-div[data-testid="stChatInput"] {{
-    padding-left: 70px !important;
-}}
-
-/* FORCE POPOVER TO EXACT LEFT OF CHAT BOX */
-div[data-testid="stPopover"] {{
-    position: fixed !important;
-    bottom: 25px !important; /* <--- Agar alignment upar/neeche ho, toh is value ko 30px ya 20px karke dekhna */
-    left: 20px !important;
-    z-index: 999999 !important;
-}}
-
-div[data-testid="stPopover"] > button {{
-    border-radius: 50% !important;
-    width: 42px !important;
-    height: 42px !important;
-    padding: 0 !important;
-    display: flex !important;
-    justify-content: center !important;
-    align-items: center !important;
-    border: 1px solid #555 !important;
-    background: transparent !important;
-}}
 </style>
 <div class="custom-avatar"></div>
 """, unsafe_allow_html=True)
@@ -318,9 +293,9 @@ for m in messages:
             st.caption(m["metrics"])
 
 
-# File Uploader (Moved to bottom left via CSS hack)
+# File Uploader (Normal Flow, chatbox ke upar)
 file_context = ""
-with st.popover("📎"):
+with st.popover("📎 Attach File"):
     uploaded_file = st.file_uploader("Upload Network Config/Log", type=["txt", "log", "conf", "csv"], label_visibility="collapsed")
     if uploaded_file is not None:
         try:
