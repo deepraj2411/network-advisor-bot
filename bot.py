@@ -207,29 +207,29 @@ header {{ visibility: hidden !important; }}
     pointer-events: none;
 }}
 
-/* FIX CHAT INPUT CUT-OFF AND MAKE SPACE FOR LEFT BUTTON */
+/* SHIFT CHAT INPUT RIGHT TO MAKE SPACE FOR LEFT BUTTON */
 div[data-testid="stChatInput"] {{
-    padding-left: 65px !important;
-    padding-bottom: 20px !important; /* Lifts input up slightly */
+    padding-left: 70px !important;
 }}
 
-/* FORCE POPOVER TO LEFT OF CHAT BOX */
+/* FORCE POPOVER TO EXACT LEFT OF CHAT BOX */
 div[data-testid="stPopover"] {{
     position: fixed !important;
-    bottom: 35px !important; /* Aligns with the lifted chat input */
+    bottom: 25px !important; /* <--- Agar alignment upar/neeche ho, toh is value ko 30px ya 20px karke dekhna */
     left: 20px !important;
     z-index: 999999 !important;
 }}
 
 div[data-testid="stPopover"] > button {{
     border-radius: 50% !important;
-    width: 45px !important;
-    height: 45px !important;
+    width: 42px !important;
+    height: 42px !important;
     padding: 0 !important;
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    border: 1px solid #444 !important;
+    border: 1px solid #555 !important;
+    background: transparent !important;
 }}
 </style>
 <div class="custom-avatar"></div>
