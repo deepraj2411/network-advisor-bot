@@ -253,7 +253,7 @@ if st.session_state.is_guest:
 else:
     messages = get_chat_messages(st.session_state.current_chat_id)
 
-st.title("🌐 AI-Powered Network Advisor")
+st.markdown("# 🌐 Network Advisor <span style='font-size: 22px; font-weight: normal; color: #888888;'>AI-powered</span>", unsafe_allow_html=True)
 st.caption("Deterministic LPU Acceleration | OSPF, BGP, TCP & Multi-Vendor Diagnostics")
 
 # Render Messages
