@@ -187,16 +187,15 @@ if not st.session_state.logged_in:
 avatar_seed = st.session_state.username if st.session_state.username else "Guest"
 st.markdown(f"""
 <style>
-/* HIDE STREAMLIT BRANDING & FOOTER TO PREVENT CUT-OFF */
+/* HIDE STREAMLIT BRANDING & FOOTER */
 footer {{ visibility: hidden !important; }}
 header {{ visibility: hidden !important; }}
-[data-testid="collapsedControl"] {{ display: none !important; }}
 
-/* FLOATING CIRCULAR AVATAR IN TOP LEFT */
+/* FLOATING CIRCULAR AVATAR IN TOP LEFT - SHIFTED RIGHT SO ARROW IS VISIBLE */
 .custom-avatar {{
     position: fixed;
     top: 15px;
-    left: 15px;
+    left: 60px; /* <--- Changed from 15px to 60px to leave space for sidebar toggle */
     z-index: 999999;
     width: 45px;
     height: 45px;
