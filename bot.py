@@ -6,10 +6,6 @@ import streamlit as st
 from dotenv import load_dotenv
 load_dotenv()
 from groq import Groq
-from streamlit_cookies_controller import CookieController
-
-# Initialize Cookie Controller
-cookie_controller = CookieController()
 
 # ----------------- DATABASE SETUP -----------------
 DB_FILE = "network_advisor.db"
@@ -17,20 +13,17 @@ DB_FILE = "network_advisor.db"
 def init_db():
     conn = sqlite3.connect(DB_FILE)
     c = conn.cursor()
-    # Users Table
     c.execute('''CREATE TABLE IF NOT EXISTS users (
                     username TEXT PRIMARY KEY,
                     password_hash TEXT,
                     full_name TEXT
                 )''')
-    # Chats Table
     c.execute('''CREATE TABLE IF NOT EXISTS chats (
                     chat_id TEXT PRIMARY KEY,
                     username TEXT,
                     title TEXT,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )''')
-    # Messages Table
     c.execute('''CREATE TABLE IF NOT EXISTS messages (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     chat_id TEXT,
@@ -137,13 +130,12 @@ init_db()
 # ----------------- APP CONFIG -----------------
 st.set_page_config(page_title="Network Advisor", page_icon="📡", layout="wide")
 
-# ----------------- SESSION & COOKIE MANAGEMENT -----------------
-# Get saved user from browser cookies
-saved_username = cookie_controller.get("network_advisor_user")
+# ----------------- URL QUERY PARAMETER LOGIN -----------------
+# Read URL parameter (e.g., ?user=deep)
+saved_username = st.query_params.get("user")
 
 if "logged_in" not in st.session_state:
     if saved_username:
-        # Auto-login if cookie exists
         fullname = get_user_fullname(saved_username)
         if fullname:
             st.session_state.logged_in = True
@@ -153,8 +145,8 @@ if "logged_in" not in st.session_state:
             user_chats = get_user_chats(saved_username)
             st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(saved_username)
         else:
-            # Invalid user in cookie, reset
-            cookie_controller.remove("network_advisor_user")
+            # Fake/Invalid URL param, clear it
+            st.query_params.clear()
             st.session_state.logged_in = False
             st.session_state.username = None
     else:
@@ -182,9 +174,8 @@ if not st.session_state.get("logged_in", False):
                 if submit_login:
                     fname = verify_user(u, p)
                     if fname:
-                        # Set Browser Cookie
-                        cookie_controller.set("network_advisor_user", u)
-                        time.sleep(0.5) # Give cookie time to set
+                        # Set URL Query Parameter for persistence
+                        st.query_params["user"] = u
                         
                         st.session_state.logged_in = True
                         st.session_state.username = u
@@ -285,7 +276,7 @@ with st.sidebar:
             
             st.divider()
             if st.button("🗑️ Delete Account", type="primary"):
-                cookie_controller.remove("network_advisor_user")
+                st.query_params.clear()
                 delete_user_account(st.session_state.username)
                 st.session_state.logged_in = False
                 st.session_state.username = None
@@ -294,11 +285,9 @@ with st.sidebar:
             st.write("Guest users have no stored account data.")
 
     if st.button("🚪 Log Out", use_container_width=True):
-        if not st.session_state.is_guest:
-            cookie_controller.remove("network_advisor_user")
+        st.query_params.clear()
         st.session_state.logged_in = False
         st.session_state.username = None
-        time.sleep(0.5)
         st.rerun()
 
 if not api_key:
