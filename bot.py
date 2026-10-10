@@ -187,10 +187,10 @@ if not st.session_state.logged_in:
 avatar_seed = st.session_state.username if st.session_state.username else "Guest"
 st.markdown(f"""
 <style>
-/* HIDE THE DOUBLE ARROW TOGGLE */
-[data-testid="collapsedControl"] {{
-    display: none !important;
-}}
+/* HIDE STREAMLIT BRANDING & FOOTER TO PREVENT CUT-OFF */
+footer {{ visibility: hidden !important; }}
+header {{ visibility: hidden !important; }}
+[data-testid="collapsedControl"] {{ display: none !important; }}
 
 /* FLOATING CIRCULAR AVATAR IN TOP LEFT */
 .custom-avatar {{
@@ -207,26 +207,29 @@ st.markdown(f"""
     pointer-events: none;
 }}
 
-/* FORCE POPOVER (ATTACH FILE) TO BOTTOM LEFT NEXT TO CHAT INPUT */
-div[data-testid="stPopover"] {{
-    position: fixed;
-    bottom: 25px;
-    left: 15px;
-    z-index: 999999;
-}}
-div[data-testid="stPopover"] > button {{
-    border-radius: 50% !important;
-    width: 45px;
-    height: 45px;
-    padding: 0 !important;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+/* FIX CHAT INPUT CUT-OFF AND MAKE SPACE FOR LEFT BUTTON */
+div[data-testid="stChatInput"] {{
+    padding-left: 65px !important;
+    padding-bottom: 20px !important; /* Lifts input up slightly */
 }}
 
-/* SHIFT CHAT INPUT SLIGHTLY RIGHT TO MAKE ROOM FOR FILE UPLOAD BUTTON */
-div[data-testid="stChatInput"] {{
-    padding-left: 60px !important;
+/* FORCE POPOVER TO LEFT OF CHAT BOX */
+div[data-testid="stPopover"] {{
+    position: fixed !important;
+    bottom: 35px !important; /* Aligns with the lifted chat input */
+    left: 20px !important;
+    z-index: 999999 !important;
+}}
+
+div[data-testid="stPopover"] > button {{
+    border-radius: 50% !important;
+    width: 45px !important;
+    height: 45px !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    border: 1px solid #444 !important;
 }}
 </style>
 <div class="custom-avatar"></div>
