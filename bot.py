@@ -143,33 +143,39 @@ if not st.session_state.logged_in:
         tab1, tab2, tab3 = st.tabs(["🔑 Login", "📝 Sign Up", "👤 Guest Access"])
         
         with tab1:
-            u = st.text_input("Username", key="login_u")
-            p = st.text_input("Password", type="password", key="login_p")
-            if st.button("Log In", use_container_width=True):
-                fname = verify_user(u, p)
-                if fname:
-                    st.session_state.logged_in = True
-                    st.session_state.username = u
-                    st.session_state.full_name = fname
-                    st.session_state.is_guest = False
-                    user_chats = get_user_chats(u)
-                    st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u)
-                    st.rerun()
-                else:
-                    st.error("Invalid username or password")
+            with st.form("login_form"):
+                u = st.text_input("Username")
+                p = st.text_input("Password", type="password")
+                submit_login = st.form_submit_button("Log In", use_container_width=True)
+                
+                if submit_login:
+                    fname = verify_user(u, p)
+                    if fname:
+                        st.session_state.logged_in = True
+                        st.session_state.username = u
+                        st.session_state.full_name = fname
+                        st.session_state.is_guest = False
+                        user_chats = get_user_chats(u)
+                        st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u)
+                        st.rerun()
+                    else:
+                        st.error("Invalid username or password")
                     
         with tab2:
-            nu = st.text_input("Choose Username", key="reg_u")
-            nf = st.text_input("Full Name", key="reg_f")
-            np = st.text_input("Create Password", type="password", key="reg_p")
-            if st.button("Create Account", use_container_width=True):
-                if nu and np and nf:
-                    if create_user(nu, np, nf):
-                        st.success("Account created successfully! Please log in.")
+            with st.form("signup_form"):
+                nu = st.text_input("Choose Username")
+                nf = st.text_input("Full Name")
+                np = st.text_input("Create Password", type="password")
+                submit_signup = st.form_submit_button("Create Account", use_container_width=True)
+                
+                if submit_signup:
+                    if nu and np and nf:
+                        if create_user(nu, np, nf):
+                            st.success("Account created successfully! Please log in.")
+                        else:
+                            st.error("Username already exists!")
                     else:
-                        st.error("Username already exists!")
-                else:
-                    st.warning("All fields are required.")
+                        st.warning("All fields are required.")
                     
         with tab3:
             st.info("Guest mode allows quick troubleshooting. Chat data will be temporary during session.")
@@ -183,30 +189,13 @@ if not st.session_state.logged_in:
     st.stop()
 
 
-# ----------------- HACKY CSS INJECTIONS -----------------
-avatar_seed = st.session_state.username if st.session_state.username else "Guest"
-st.markdown(f"""
+# ----------------- HACKY CSS REMOVED (Clean UI setup) -----------------
+st.markdown("""
 <style>
-/* HIDE STREAMLIT BRANDING & FOOTER */
-footer {{ visibility: hidden !important; }}
-header {{ visibility: hidden !important; }}
-
-/* FLOATING CIRCULAR AVATAR IN TOP LEFT - SHIFTED RIGHT SO ARROW IS VISIBLE */
-.custom-avatar {{
-    position: fixed;
-    top: 15px;
-    left: 60px; /* <--- Changed from 15px to 60px to leave space for sidebar toggle */
-    z-index: 999999;
-    width: 45px;
-    height: 45px;
-    border-radius: 50%;
-    border: 2px solid #ff4b4b;
-    background-image: url('https://api.dicebear.com/7.x/bottts/svg?seed={avatar_seed}');
-    background-size: cover;
-    pointer-events: none;
-}}
+/* HIDE STREAMLIT BRANDING & FOOTER ONLY */
+footer { visibility: hidden !important; }
+header { visibility: hidden !important; }
 </style>
-<div class="custom-avatar"></div>
 """, unsafe_allow_html=True)
 
 
@@ -214,7 +203,15 @@ header {{ visibility: hidden !important; }}
 api_key = os.environ.get("GROQ_API_KEY")
 
 with st.sidebar:
-    st.markdown(f"<h3 style='margin-top: 20px; font-size: 18px;'>Welcome, {st.session_state.full_name}</h3><hr style='margin-top: 0px;'>", unsafe_allow_html=True)
+    # Avatar and Welcome text cleanly placed INSIDE the sidebar
+    avatar_seed = st.session_state.username if st.session_state.username else "Guest"
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; margin-bottom: 20px; margin-top: 10px;">
+        <img src="https://api.dicebear.com/7.x/bottts/svg?seed={avatar_seed}" style="border-radius: 50%; width: 45px; height: 45px; margin-right: 12px; border: 2px solid #ff4b4b;">
+        <h3 style="margin: 0; font-size: 18px;">Welcome, {st.session_state.full_name}</h3>
+    </div>
+    <hr style="margin-top: 0px;">
+    """, unsafe_allow_html=True)
     
     if not api_key:
         api_key = st.text_input("Groq API Key:", type="password")
