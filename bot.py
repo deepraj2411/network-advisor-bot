@@ -188,8 +188,9 @@ if "logged_in" not in st.session_state:
 
 # ----------------- LOGIN / AUTH SCREEN -----------------
 if not st.session_state.get("logged_in", False):
-    # Keep the sign-in screen focused and readable while retaining Streamlit's
-    # native widgets, keyboard behavior, and responsive layout.
+    st.session_state.setdefault("auth_mode", "login")
+
+    # Clean, responsive sign-in layout using native Streamlit controls.
     st.markdown("""
     <style>
     .block-container {
@@ -202,16 +203,6 @@ if not st.session_state.get("logged_in", False):
             radial-gradient(ellipse at 50% 0%, rgba(75, 91, 180, 0.18), transparent 42%),
             var(--background-color);
     }
-    [data-testid="stTabs"] [role="tablist"] {
-        justify-content: center;
-        gap: 0.35rem;
-        border-bottom: 1px solid rgba(140, 150, 175, 0.22);
-    }
-    [data-testid="stTabs"] button[role="tab"] {
-        min-height: 2.8rem;
-        padding-inline: 1rem;
-        border-radius: 0.65rem 0.65rem 0 0;
-    }
     [data-testid="stForm"] {
         border: 1px solid rgba(140, 150, 175, 0.24);
         border-radius: 1rem;
@@ -222,21 +213,34 @@ if not st.session_state.get("logged_in", False):
         min-height: 2.8rem;
         border-radius: 0.65rem;
     }
-    [data-testid="stForm"] button[kind="primary"] {
+    [data-testid="stForm"] button[kind="primary"],
+    [data-testid="stButton"] button {
         min-height: 2.9rem;
         border-radius: 0.65rem;
-        font-weight: 650;
+        font-weight: 600;
+    }
+    .auth-divider {
+        display: flex;
+        align-items: center;
+        gap: 0.8rem;
+        margin: 1.1rem 0;
+        color: rgba(180, 185, 200, 0.8);
+        font-size: 0.9rem;
+    }
+    .auth-divider::before, .auth-divider::after {
+        content: "";
+        flex: 1;
+        border-top: 1px solid rgba(140, 150, 175, 0.28);
     }
     footer, #MainMenu { visibility: hidden; }
     </style>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 1.45, 1])
+    col1, col2, col3 = st.columns([1, 2.4, 1])
     with col2:
         st.markdown("""
-        <div style="text-align:center; margin: 0 auto 1.4rem;">
-          <div style="font-size:2.8rem; line-height:1.2;" aria-hidden="true">📡</div>
-          <h1 style="margin:0.35rem 0 0.45rem; font-size:2rem;">Network Advisor</h1>
+        <div style="text-align:center; margin: 0 auto 1.5rem;">
+          <h1 style="margin:0 0 0.45rem; font-size:2rem;">Network Advisor</h1>
           <p style="margin:0; opacity:0.78; font-size:1rem;">
             AI-powered network troubleshooting
           </p>
@@ -246,14 +250,12 @@ if not st.session_state.get("logged_in", False):
         </div>
         """, unsafe_allow_html=True)
 
-        tab1, tab2, tab3 = st.tabs(["🔑 Log in", "📝 Create account", "👤 Guest access"])
-
-        with tab1:
-            st.caption("Log in to continue to your saved network consultations.")
+        if st.session_state.auth_mode == "login":
+            st.markdown("**Sign in**")
             with st.form("login_form"):
                 u = st.text_input("Username", placeholder="Enter your username")
                 p = st.text_input("Password", type="password", placeholder="Enter your password")
-                submit_login = st.form_submit_button("Log in", type="primary", use_container_width=True)
+                submit_login = st.form_submit_button("Sign in", type="primary", use_container_width=True)
 
                 if submit_login:
                     if not u.strip() or not p:
@@ -274,8 +276,23 @@ if not st.session_state.get("logged_in", False):
                         else:
                             st.error("We couldn't log you in with those details. Check your username and password and try again.")
 
-        with tab2:
-            st.caption("Create an account to keep your consultation history.")
+            st.markdown('<div class="auth-divider"><span>or</span></div>', unsafe_allow_html=True)
+            if st.button("Continue as guest", use_container_width=True):
+                st.session_state.logged_in = True
+                st.session_state.username = "guest_user"
+                st.session_state.full_name = "Guest User"
+                st.session_state.is_guest = True
+                st.session_state.guest_messages = []
+                st.rerun()
+
+            st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
+            st.caption("New to Network Advisor?")
+            if st.button("Create account", use_container_width=True):
+                st.session_state.auth_mode = "signup"
+                st.rerun()
+        else:
+            st.markdown("**Create your account**")
+            st.caption("Save your network consultation history in an account.")
             with st.form("signup_form"):
                 nu = st.text_input("Username", placeholder="Choose a username")
                 nf = st.text_input("Full name", placeholder="How should we address you?")
@@ -286,22 +303,23 @@ if not st.session_state.get("logged_in", False):
                     nu, nf = nu.strip(), nf.strip()
                     if nu and np and nf:
                         if create_user(nu, np, nf):
-                            st.success("Account created. You can now log in.")
+                            st.success("Account created. You can now sign in.")
+                            st.session_state.auth_mode = "login"
                         else:
                             st.error("That username is already in use. Choose another one.")
                     else:
                         st.warning("Complete all three fields to create your account.")
 
-        with tab3:
-            st.markdown("**Try the advisor without creating an account.**")
-            st.caption("Guest conversations are kept only for this session and are not saved to an account.")
-            if st.button("Continue as guest", type="primary", use_container_width=True):
-                st.session_state.logged_in = True
-                st.session_state.username = "guest_user"
-                st.session_state.full_name = "Guest User"
-                st.session_state.is_guest = True
-                st.session_state.guest_messages = []
+            if st.button("Back to sign in", use_container_width=True):
+                st.session_state.auth_mode = "login"
                 st.rerun()
+
+        st.markdown("""
+        <hr style="margin:2rem 0 0.8rem; opacity:0.25;">
+        <div style="text-align:center; font-size:0.78rem; opacity:0.62;">
+          Network diagnostics and AI-assisted troubleshooting
+        </div>
+        """, unsafe_allow_html=True)
     st.stop()
 
 # ----------------- CLEAN UI SETUP -----------------
