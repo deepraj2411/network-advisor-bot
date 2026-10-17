@@ -188,54 +188,114 @@ if "logged_in" not in st.session_state:
 
 # ----------------- LOGIN / AUTH SCREEN -----------------
 if not st.session_state.get("logged_in", False):
-    col1, col2, col3 = st.columns([1, 2, 1])
+    # Keep the sign-in screen focused and readable while retaining Streamlit's
+    # native widgets, keyboard behavior, and responsive layout.
+    st.markdown("""
+    <style>
+    .block-container {
+        max-width: 980px;
+        padding-top: clamp(2rem, 7vh, 4.5rem);
+        padding-bottom: 2.5rem;
+    }
+    [data-testid="stAppViewContainer"] {
+        background:
+            radial-gradient(ellipse at 50% 0%, rgba(75, 91, 180, 0.18), transparent 42%),
+            var(--background-color);
+    }
+    [data-testid="stTabs"] [role="tablist"] {
+        justify-content: center;
+        gap: 0.35rem;
+        border-bottom: 1px solid rgba(140, 150, 175, 0.22);
+    }
+    [data-testid="stTabs"] button[role="tab"] {
+        min-height: 2.8rem;
+        padding-inline: 1rem;
+        border-radius: 0.65rem 0.65rem 0 0;
+    }
+    [data-testid="stForm"] {
+        border: 1px solid rgba(140, 150, 175, 0.24);
+        border-radius: 1rem;
+        padding: 1.25rem 1.35rem 1rem;
+        background: rgba(255, 255, 255, 0.025);
+    }
+    [data-testid="stForm"] input {
+        min-height: 2.8rem;
+        border-radius: 0.65rem;
+    }
+    [data-testid="stForm"] button[kind="primary"] {
+        min-height: 2.9rem;
+        border-radius: 0.65rem;
+        font-weight: 650;
+    }
+    footer, #MainMenu { visibility: hidden; }
+    </style>
+    """, unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns([1, 1.45, 1])
     with col2:
-        st.markdown("<h2 style='text-align: center;'>📡 Network Advisor <span style='font-size: 18px; font-weight: normal; color: #888888;'>AI-powered</span></h2>", unsafe_allow_html=True)
-        st.caption("<p style='text-align: center;'>Enterprise LPU Diagnostic & Triage Console</p>", unsafe_allow_html=True)
-        
-        tab1, tab2, tab3 = st.tabs(["🔑 Login", "📝 Sign Up", "👤 Guest Access"])
-        
+        st.markdown("""
+        <div style="text-align:center; margin: 0 auto 1.4rem;">
+          <div style="font-size:2.8rem; line-height:1.2;" aria-hidden="true">📡</div>
+          <h1 style="margin:0.35rem 0 0.45rem; font-size:2rem;">Network Advisor</h1>
+          <p style="margin:0; opacity:0.78; font-size:1rem;">
+            AI-powered network troubleshooting
+          </p>
+          <p style="margin:0.55rem 0 0; opacity:0.62; font-size:0.88rem;">
+            Diagnose connectivity issues and explore practical next steps.
+          </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+        tab1, tab2, tab3 = st.tabs(["🔑 Log in", "📝 Create account", "👤 Guest access"])
+
         with tab1:
+            st.caption("Log in to continue to your saved network consultations.")
             with st.form("login_form"):
-                u = st.text_input("Username")
-                p = st.text_input("Password", type="password")
-                submit_login = st.form_submit_button("Log In", use_container_width=True)
-                
+                u = st.text_input("Username", placeholder="Enter your username")
+                p = st.text_input("Password", type="password", placeholder="Enter your password")
+                submit_login = st.form_submit_button("Log in", type="primary", use_container_width=True)
+
                 if submit_login:
-                    fname = verify_user(u, p)
-                    if fname:
-                        token = create_session(u)
-                        st.query_params["session"] = token
-                        
-                        st.session_state.logged_in = True
-                        st.session_state.username = u
-                        st.session_state.full_name = fname
-                        st.session_state.is_guest = False
-                        user_chats = get_user_chats(u)
-                        st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u)
-                        st.rerun()
+                    if not u.strip() or not p:
+                        st.warning("Enter both your username and password.")
                     else:
-                        st.error("Invalid username or password")
-                    
+                        fname = verify_user(u.strip(), p)
+                        if fname:
+                            token = create_session(u.strip())
+                            st.query_params["session"] = token
+
+                            st.session_state.logged_in = True
+                            st.session_state.username = u.strip()
+                            st.session_state.full_name = fname
+                            st.session_state.is_guest = False
+                            user_chats = get_user_chats(u.strip())
+                            st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u.strip())
+                            st.rerun()
+                        else:
+                            st.error("We couldn't log you in with those details. Check your username and password and try again.")
+
         with tab2:
+            st.caption("Create an account to keep your consultation history.")
             with st.form("signup_form"):
-                nu = st.text_input("Choose Username")
-                nf = st.text_input("Full Name")
-                np = st.text_input("Create Password", type="password")
-                submit_signup = st.form_submit_button("Create Account", use_container_width=True)
-                
+                nu = st.text_input("Username", placeholder="Choose a username")
+                nf = st.text_input("Full name", placeholder="How should we address you?")
+                np = st.text_input("Password", type="password", placeholder="Create a password")
+                submit_signup = st.form_submit_button("Create account", type="primary", use_container_width=True)
+
                 if submit_signup:
+                    nu, nf = nu.strip(), nf.strip()
                     if nu and np and nf:
                         if create_user(nu, np, nf):
-                            st.success("Account created successfully! Please log in.")
+                            st.success("Account created. You can now log in.")
                         else:
-                            st.error("Username already exists!")
+                            st.error("That username is already in use. Choose another one.")
                     else:
-                        st.warning("All fields are required.")
-                    
+                        st.warning("Complete all three fields to create your account.")
+
         with tab3:
-            st.info("Guest mode allows quick troubleshooting. Chat data will be temporary during session.")
-            if st.button("Continue as Guest User", use_container_width=True):
+            st.markdown("**Try the advisor without creating an account.**")
+            st.caption("Guest conversations are kept only for this session and are not saved to an account.")
+            if st.button("Continue as guest", type="primary", use_container_width=True):
                 st.session_state.logged_in = True
                 st.session_state.username = "guest_user"
                 st.session_state.full_name = "Guest User"
