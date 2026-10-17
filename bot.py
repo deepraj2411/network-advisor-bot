@@ -240,7 +240,7 @@ if not st.session_state.get("logged_in", False):
     with col2:
         st.markdown("""
         <div style="text-align:center; margin: 0 auto 1.5rem;">
-          <h1 style="margin:0 0 0.45rem; font-size:2rem;">Network Advisor</h1>
+          <h1 style="margin:0 0 0.45rem; font-size:2rem;">📡 Network Advisor</h1>
           <p style="margin:0; opacity:0.78; font-size:1rem;">
             AI-powered network troubleshooting
           </p>
@@ -447,7 +447,7 @@ client = Groq(api_key=api_key)
 head_col1, head_col2 = st.columns([3, 1])
 with head_col1:
     st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network Advisor</h2>", unsafe_allow_html=True)
-    st.caption("Deterministic LPU Acceleration | Multi-Vendor Diagnostics")
+    st.caption("Network diagnostics and multi-vendor troubleshooting")
 with head_col2:
     selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
 
@@ -463,6 +463,29 @@ if st.session_state.is_guest:
 else:
     messages = get_chat_messages(st.session_state.current_chat_id) if st.session_state.current_chat_id else []
 
+
+if not messages:
+    st.markdown("""
+    <div style="max-width:760px; margin:3.5rem auto 1.4rem; text-align:center;">
+      <h3 style="margin-bottom:0.45rem;">What can we troubleshoot?</h3>
+      <p style="opacity:0.72; margin:0;">
+        Ask a network question, describe a problem, or attach a configuration or log.
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
+    prompt_col1, prompt_col2 = st.columns(2)
+    quick_prompts = [
+        ("🌐 Slow connection", "My Wi-Fi is connected, but webpages load slowly. What should I check first?"),
+        ("📉 Packet loss", "How can I troubleshoot packet loss to a remote server?"),
+        ("🔌 Intermittent outage", "What information should I collect to investigate intermittent network outages?"),
+        ("🛡️ Review a configuration", "Help me review an attached network configuration for common issues."),
+    ]
+    for index, (label, prompt_text) in enumerate(quick_prompts):
+        prompt_column = prompt_col1 if index % 2 == 0 else prompt_col2
+        with prompt_column:
+            if st.button(label, key=f"quick_prompt_{index}", use_container_width=True):
+                st.session_state.queued_prompt = prompt_text
+                st.rerun()
 
 for m in messages:
     with st.chat_message(m["role"]):
@@ -481,7 +504,11 @@ with st.popover("📎 Attach File"):
         except Exception as e:
             st.error("Failed to parse file text.")
 
-if prompt := st.chat_input("Ask a network question or describe the anomaly..."):
+chat_input_prompt = st.chat_input("Ask a network question or describe the anomaly...")
+queued_prompt = st.session_state.pop("queued_prompt", None)
+prompt = queued_prompt or chat_input_prompt
+
+if prompt:
     # Edge case: All chats deleted but user types something
     if not st.session_state.is_guest and not st.session_state.current_chat_id:
         st.session_state.current_chat_id = create_new_chat(st.session_state.username)
