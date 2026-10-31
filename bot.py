@@ -160,7 +160,7 @@ def destroy_session(username):
 init_db()
 
 # ----------------- APP CONFIG -----------------
-st.set_page_config(page_title="Network Advisor", page_icon="📡", layout="wide")
+st.set_page_config(page_title="Network & IT Support Advisor", page_icon="📡", layout="wide")
 
 # ----------------- SECURE URL PARAMETER LOGIN -----------------
 saved_token = st.query_params.get("session")
@@ -239,12 +239,12 @@ if not st.session_state.get("logged_in", False):
     with col2:
         st.markdown("""
         <div style="text-align:center; margin: 0 auto 1.5rem;">
-          <h1 style="margin:0 0 0.45rem; font-size:2rem;">📡 Network Advisor</h1>
+          <h1 style="margin:0 0 0.45rem; font-size:2rem;">📡 Network & IT Support Advisor</h1>
           <p style="margin:0; opacity:0.78; font-size:1rem;">
-            AI-powered network troubleshooting
+            Enterprise AI-powered network & systems triage
           </p>
           <p style="margin:0.55rem 0 0; opacity:0.62; font-size:0.88rem;">
-            Diagnose connectivity issues and explore practical next steps.
+            Diagnose network failures, Active Directory issues, and enterprise endpoint anomalies.
           </p>
         </div>
         """, unsafe_allow_html=True)
@@ -277,7 +277,7 @@ if not st.session_state.get("logged_in", False):
 
             st.markdown('<div class="auth-divider"><span>or</span></div>', unsafe_allow_html=True)
             if st.button("Continue as guest", use_container_width=True):
-                st.query_params.clear()  # FIX 1: URL query token clean kiya
+                st.query_params.clear()
                 st.session_state.logged_in = True
                 st.session_state.username = "guest_user"
                 st.session_state.full_name = "Guest User"
@@ -286,13 +286,13 @@ if not st.session_state.get("logged_in", False):
                 st.rerun()
 
             st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
-            st.caption("New to Network Advisor?")
+            st.caption("New to Network & IT Support Advisor?")
             if st.button("Create account", use_container_width=True):
                 st.session_state.auth_mode = "signup"
                 st.rerun()
         else:
             st.markdown("**Create your account**")
-            st.caption("Save your network consultation history in an account.")
+            st.caption("Save your consultation history in an account.")
             with st.form("signup_form"):
                 nu = st.text_input("Choose Username", placeholder="Choose a username")
                 nf = st.text_input("Full name", placeholder="How should we address you?")
@@ -317,7 +317,7 @@ if not st.session_state.get("logged_in", False):
         st.markdown("""
         <hr style="margin:2rem 0 0.8rem; opacity:0.25;">
         <div style="text-align:center; font-size:0.78rem; opacity:0.62;">
-          Network diagnostics and AI-assisted troubleshooting
+          Enterprise IT & Network Support Diagnostic Console
         </div>
         """, unsafe_allow_html=True)
     st.stop()
@@ -333,9 +333,10 @@ footer { visibility: hidden !important; }
 # ----------------- MAIN CHAT INTERFACE -----------------
 api_key = os.environ.get("GROQ_API_KEY")
 
-# --- EXPERT MODES DICTIONARY ---
+# --- EXPANDED ROLE DEFINITIONS (NETWORK + IT SUPPORT) ---
 ROLE_PROMPTS = {
-    "Network Engineer": "You are an expert IT & Network Support Engineer. Focus on routing protocols (OSPF, BGP), switching, TCP/IP, and enterprise network diagnostics.",
+    "IT Support Specialist": "You are a Tier-2/3 Enterprise IT Support Specialist. Focus on Active Directory, Windows Server, Group Policy (GPO), client OS anomalies, endpoint triage, print spoolers, DNS/DHCP client issues, and Microsoft 365/Exchange troubleshooting.",
+    "Network Engineer": "You are an expert IT & Network Engineer. Focus on routing protocols (OSPF, BGP), switching, VLANs, TCP/IP, and enterprise hardware diagnostics.",
     "Cybersecurity Analyst": "You are an elite Cybersecurity Analyst. Focus on firewalls, threat hunting, packet analysis, IPS/IDS, and zero-trust architecture.",
     "Cloud Architect": "You are a Cloud Network Architect. Focus on AWS/Azure VPCs, cloud transit gateways, SDN troubleshooting, and hybrid cloud connectivity."
 }
@@ -440,18 +441,18 @@ if not api_key:
 client = Groq(api_key=api_key)
 
 # --- MAIN CHAT HEADER AND ROLE SWITCHER ---
-head_col1, head_col2 = st.columns([3, 1])
+head_col1, head_col2 = st.columns([3, 1.2])
 with head_col1:
-    st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network Advisor</h2>", unsafe_allow_html=True)
-    st.caption("Network diagnostics and multi-vendor troubleshooting")
+    st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network & IT Support Advisor</h2>", unsafe_allow_html=True)
+    st.caption("Enterprise diagnostics, multi-vendor networking & systems triage")
 with head_col2:
     selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
 
-# Dynamic System Prompt based on selected role
+# Hardened but balanced System Prompt covering IT & Network domains
 SYSTEM_PROMPT = (
     ROLE_PROMPTS[selected_role] +
-    " STRICT INSTRUCTION: You must ONLY answer questions related to networking, IT infrastructure, servers, and cybersecurity. "
-    "If a user asks about unrelated topics (like room decor, smartphones, movies, general knowledge, etc.), clearly and politely decline by stating that you are a Network Advisor and cannot help with non-IT queries."
+    " STRICT INSTRUCTION: You must ONLY answer questions strictly related to networking, enterprise IT infrastructure, systems administration (Active Directory, Windows/Linux server triage), cybersecurity, and enterprise cloud. "
+    "If a user asks about non-IT or non-networking topics (such as general knowledge, cooking, movies, lifestyle, etc.), clearly decline by stating that you are an enterprise Network & IT Support Advisor."
 )
 
 if st.session_state.is_guest:
@@ -464,16 +465,16 @@ if not messages:
     <div style="max-width:760px; margin:3.5rem auto 1.4rem; text-align:center;">
       <h3 style="margin-bottom:0.45rem;">What can we troubleshoot?</h3>
       <p style="opacity:0.72; margin:0;">
-        Ask a network question, describe a problem, or attach a configuration or log.
+        Ask an IT/network query, describe an anomaly, or attach a configuration or event log.
       </p>
     </div>
     """, unsafe_allow_html=True)
     prompt_col1, prompt_col2 = st.columns(2)
     quick_prompts = [
-        ("🌐 Slow connection", "My Wi-Fi is connected, but webpages load slowly. What should I check first?"),
-        ("📉 Packet loss", "How can I troubleshoot packet loss to a remote server?"),
-        ("🔌 Intermittent outage", "What information should I collect to investigate intermittent network outages?"),
-        ("🛡️ Review a configuration", "Help me review an attached network configuration for common issues."),
+        ("🌐 Slow Network & Latency", "My Wi-Fi is connected, but webpages load slowly. What triage steps should I run?"),
+        ("🔑 AD Account Lockout", "A domain user account keeps getting locked out in Active Directory repeatedly. How do I trace the source?"),
+        ("🖥️ OS Crash / BSOD Triage", "An enterprise desktop is stuck in a boot loop with BSOD error 'CRITICAL_PROCESS_DIED'. What diagnostic steps should I follow?"),
+        ("🛡️ Review Config / Log File", "Help me review an attached network configuration or system event log for common issues."),
     ]
     for index, (label, prompt_text) in enumerate(quick_prompts):
         prompt_column = prompt_col1 if index % 2 == 0 else prompt_col2
@@ -490,7 +491,7 @@ for m in messages:
 
 file_context = ""
 with st.popover("📎 Attach File"):
-    uploaded_file = st.file_uploader("Upload Network Config/Log", type=["txt", "log", "conf", "csv"], label_visibility="collapsed")
+    uploaded_file = st.file_uploader("Upload Config / System Log", type=["txt", "log", "conf", "csv"], label_visibility="collapsed")
     if uploaded_file is not None:
         try:
             file_content = uploaded_file.read().decode("utf-8")
@@ -499,12 +500,11 @@ with st.popover("📎 Attach File"):
         except Exception as e:
             st.error("Failed to parse file text.")
 
-chat_input_prompt = st.chat_input("Ask a network question or describe the anomaly...")
+chat_input_prompt = st.chat_input("Ask a network or IT support question...")
 queued_prompt = st.session_state.pop("queued_prompt", None)
 prompt = queued_prompt or chat_input_prompt
 
 if prompt:
-    # FIX 2: Config review prompt par validation check
     if "Review an attached network configuration" in prompt and not file_context:
         st.warning("⚠️ Pehle 'Attach File' se configuration ya log file upload karo, fir ye prompt chalao.")
         st.stop()
