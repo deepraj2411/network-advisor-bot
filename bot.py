@@ -190,7 +190,6 @@ if "logged_in" not in st.session_state:
 if not st.session_state.get("logged_in", False):
     st.session_state.setdefault("auth_mode", "login")
 
-    # Clean, responsive sign-in layout using native Streamlit controls.
     st.markdown("""
     <style>
     .block-container {
@@ -278,6 +277,7 @@ if not st.session_state.get("logged_in", False):
 
             st.markdown('<div class="auth-divider"><span>or</span></div>', unsafe_allow_html=True)
             if st.button("Continue as guest", use_container_width=True):
+                st.query_params.clear()  # FIX 1: URL query token clean kiya
                 st.session_state.logged_in = True
                 st.session_state.username = "guest_user"
                 st.session_state.full_name = "Guest User"
@@ -294,7 +294,7 @@ if not st.session_state.get("logged_in", False):
             st.markdown("**Create your account**")
             st.caption("Save your network consultation history in an account.")
             with st.form("signup_form"):
-                nu = st.text_input("Username", placeholder="Choose a username")
+                nu = st.text_input("Choose Username", placeholder="Choose a username")
                 nf = st.text_input("Full name", placeholder="How should we address you?")
                 np = st.text_input("Password", type="password", placeholder="Create a password")
                 submit_signup = st.form_submit_button("Create account", type="primary", use_container_width=True)
@@ -329,7 +329,6 @@ footer { visibility: hidden !important; }
 #MainMenu { visibility: hidden !important; }
 </style>
 """, unsafe_allow_html=True)
-
 
 # ----------------- MAIN CHAT INTERFACE -----------------
 api_key = os.environ.get("GROQ_API_KEY")
@@ -376,7 +375,6 @@ with st.sidebar:
         # --- CHAT MANAGEMENT (RENAME, DELETE, EXPORT) ---
         if st.session_state.current_chat_id:
             with st.expander("🛠️ Manage Current Chat"):
-                # Export functionality
                 chat_msgs = get_chat_messages(st.session_state.current_chat_id)
                 export_str = f"--- Chat Export: {st.session_state.current_chat_id} ---\n\n"
                 for m in chat_msgs:
@@ -390,14 +388,12 @@ with st.sidebar:
                     use_container_width=True
                 )
                 
-                # Rename functionality
                 new_chat_name = st.text_input("Rename Chat", placeholder="New name...")
                 if st.button("Save Name", use_container_width=True):
                     if new_chat_name:
                         update_chat_title(st.session_state.current_chat_id, new_chat_name)
                         st.rerun()
                         
-                # Delete functionality
                 if st.button("🗑️ Delete Chat", type="primary", use_container_width=True):
                     delete_chat(st.session_state.current_chat_id)
                     st.session_state.current_chat_id = None
@@ -463,7 +459,6 @@ if st.session_state.is_guest:
 else:
     messages = get_chat_messages(st.session_state.current_chat_id) if st.session_state.current_chat_id else []
 
-
 if not messages:
     st.markdown("""
     <div style="max-width:760px; margin:3.5rem auto 1.4rem; text-align:center;">
@@ -509,7 +504,11 @@ queued_prompt = st.session_state.pop("queued_prompt", None)
 prompt = queued_prompt or chat_input_prompt
 
 if prompt:
-    # Edge case: All chats deleted but user types something
+    # FIX 2: Config review prompt par validation check
+    if "Review an attached network configuration" in prompt and not file_context:
+        st.warning("⚠️ Pehle 'Attach File' se configuration ya log file upload karo, fir ye prompt chalao.")
+        st.stop()
+
     if not st.session_state.is_guest and not st.session_state.current_chat_id:
         st.session_state.current_chat_id = create_new_chat(st.session_state.username)
         messages = []
@@ -556,15 +555,4 @@ if prompt:
                 
             end_time = time.time()
             latency_ms = round((end_time - start_time) * 1000, 2)
-            metrics_info = f"⚡ **Inference Latency:** {latency_ms} ms | **Engine:** Groq LPU"
-            
-            message_placeholder.markdown(full_response)
-            st.caption(metrics_info)
-
-            if st.session_state.is_guest:
-                st.session_state.guest_messages.append({"role": "assistant", "content": full_response, "metrics": metrics_info})
-            else:
-                save_message(st.session_state.current_chat_id, "assistant", full_response, metrics_info)
-
-        except Exception as e:
-            st.error(f"Inference Error: {str(e)}")
+            metrics_info = f"⚡ **Inference Latency:** {latency_ms} ms
