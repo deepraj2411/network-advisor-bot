@@ -190,12 +190,13 @@ if "logged_in" not in st.session_state:
 if not st.session_state.get("logged_in", False):
     st.session_state.setdefault("auth_mode", "login")
 
+    # Compact UI styling for 100% viewport fitting
     st.markdown("""
     <style>
     .block-container {
-        max-width: 980px;
-        padding-top: clamp(2rem, 7vh, 4.5rem);
-        padding-bottom: 2.5rem;
+        max-width: 580px !important;
+        padding-top: 1.2rem !important;
+        padding-bottom: 1rem !important;
     }
     [data-testid="stAppViewContainer"] {
         background:
@@ -204,27 +205,27 @@ if not st.session_state.get("logged_in", False):
     }
     [data-testid="stForm"] {
         border: 1px solid rgba(140, 150, 175, 0.24);
-        border-radius: 1rem;
-        padding: 1.25rem 1.35rem 1rem;
+        border-radius: 0.85rem;
+        padding: 0.9rem 1.1rem 0.8rem !important;
         background: rgba(255, 255, 255, 0.025);
     }
     [data-testid="stForm"] input {
-        min-height: 2.8rem;
-        border-radius: 0.65rem;
+        min-height: 2.4rem !important;
+        border-radius: 0.5rem;
     }
     [data-testid="stForm"] button[kind="primary"],
     [data-testid="stButton"] button {
-        min-height: 2.9rem;
-        border-radius: 0.65rem;
+        min-height: 2.4rem !important;
+        border-radius: 0.5rem;
         font-weight: 600;
     }
     .auth-divider {
         display: flex;
         align-items: center;
-        gap: 0.8rem;
-        margin: 1.1rem 0;
+        gap: 0.6rem;
+        margin: 0.6rem 0 !important;
         color: rgba(180, 185, 200, 0.8);
-        font-size: 0.9rem;
+        font-size: 0.82rem;
     }
     .auth-divider::before, .auth-divider::after {
         content: "";
@@ -235,91 +236,86 @@ if not st.session_state.get("logged_in", False):
     </style>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1, 2.4, 1])
-    with col2:
-        st.markdown("""
-        <div style="text-align:center; margin: 0 auto 1.5rem;">
-          <h1 style="margin:0 0 0.45rem; font-size:2rem;">📡 Network & IT Support Advisor</h1>
-          <p style="margin:0; opacity:0.78; font-size:1rem;">
-            Enterprise AI-powered network & systems triage
-          </p>
-          <p style="margin:0.55rem 0 0; opacity:0.62; font-size:0.88rem;">
-            Diagnose network failures, Active Directory issues, and enterprise endpoint anomalies.
-          </p>
-        </div>
-        """, unsafe_allow_html=True)
+    st.markdown("""
+    <div style="text-align:center; margin: 0 auto 0.8rem;">
+      <h2 style="margin:0 0 0.2rem; font-size:1.6rem;">📡 Network & IT Support Advisor</h2>
+      <p style="margin:0; opacity:0.75; font-size:0.88rem;">
+        Enterprise AI-powered network & systems triage
+      </p>
+    </div>
+    """, unsafe_allow_html=True)
 
-        if st.session_state.auth_mode == "login":
-            st.markdown("**Sign in**")
-            with st.form("login_form"):
-                u = st.text_input("Username", placeholder="Enter your username")
-                p = st.text_input("Password", type="password", placeholder="Enter your password")
-                submit_login = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+    if st.session_state.auth_mode == "login":
+        with st.form("login_form"):
+            u = st.text_input("Username", placeholder="Enter your username")
+            p = st.text_input("Password", type="password", placeholder="Enter your password")
+            submit_login = st.form_submit_button("Sign in", type="primary", use_container_width=True)
 
-                if submit_login:
-                    if not u.strip() or not p:
-                        st.warning("Enter both your username and password.")
+            if submit_login:
+                if not u.strip() or not p:
+                    st.warning("Enter both your username and password.")
+                else:
+                    fname = verify_user(u.strip(), p)
+                    if fname:
+                        token = create_session(u.strip())
+                        st.query_params["session"] = token
+
+                        st.session_state.logged_in = True
+                        st.session_state.username = u.strip()
+                        st.session_state.full_name = fname
+                        st.session_state.is_guest = False
+                        user_chats = get_user_chats(u.strip())
+                        st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u.strip())
+                        st.rerun()
                     else:
-                        fname = verify_user(u.strip(), p)
-                        if fname:
-                            token = create_session(u.strip())
-                            st.query_params["session"] = token
+                        st.error("Invalid username or password.")
 
-                            st.session_state.logged_in = True
-                            st.session_state.username = u.strip()
-                            st.session_state.full_name = fname
-                            st.session_state.is_guest = False
-                            user_chats = get_user_chats(u.strip())
-                            st.session_state.current_chat_id = user_chats[0][0] if user_chats else create_new_chat(u.strip())
-                            st.rerun()
-                        else:
-                            st.error("We couldn't log you in with those details. Check your username and password and try again.")
-
-            st.markdown('<div class="auth-divider"><span>or</span></div>', unsafe_allow_html=True)
-            if st.button("Continue as guest", use_container_width=True):
-                st.query_params.clear()
-                st.session_state.logged_in = True
-                st.session_state.username = "guest_user"
-                st.session_state.full_name = "Guest User"
-                st.session_state.is_guest = True
-                st.session_state.guest_messages = []
-                st.rerun()
-
-            st.markdown("<div style='height:0.4rem'></div>", unsafe_allow_html=True)
-            st.caption("New to Network & IT Support Advisor?")
-            if st.button("Create account", use_container_width=True):
-                st.session_state.auth_mode = "signup"
-                st.rerun()
-        else:
-            st.markdown("**Create your account**")
-            st.caption("Save your consultation history in an account.")
-            with st.form("signup_form"):
-                nu = st.text_input("Choose Username", placeholder="Choose a username")
-                nf = st.text_input("Full name", placeholder="How should we address you?")
-                np = st.text_input("Password", type="password", placeholder="Create a password")
-                submit_signup = st.form_submit_button("Create account", type="primary", use_container_width=True)
-
-                if submit_signup:
-                    nu, nf = nu.strip(), nf.strip()
-                    if nu and np and nf:
-                        if create_user(nu, np, nf):
-                            st.success("Account created. You can now sign in.")
-                            st.session_state.auth_mode = "login"
-                        else:
-                            st.error("That username is already in use. Choose another one.")
-                    else:
-                        st.warning("Complete all three fields to create your account.")
-
-            if st.button("Back to sign in", use_container_width=True):
-                st.session_state.auth_mode = "login"
-                st.rerun()
+        st.markdown('<div class="auth-divider"><span>or</span></div>', unsafe_allow_html=True)
+        if st.button("Continue as guest", use_container_width=True):
+            st.query_params.clear()
+            st.session_state.logged_in = True
+            st.session_state.username = "guest_user"
+            st.session_state.full_name = "Guest User"
+            st.session_state.is_guest = True
+            st.session_state.guest_messages = []
+            st.rerun()
 
         st.markdown("""
-        <hr style="margin:2rem 0 0.8rem; opacity:0.25;">
-        <div style="text-align:center; font-size:0.78rem; opacity:0.62;">
-          Enterprise IT & Network Support Diagnostic Console
+        <div style="text-align:center; margin-top:0.6rem; margin-bottom:0.2rem; font-size:0.85rem; opacity:0.8;">
+          New to Network & IT Support Advisor?
         </div>
         """, unsafe_allow_html=True)
+        if st.button("Create account", use_container_width=True):
+            st.session_state.auth_mode = "signup"
+            st.rerun()
+    else:
+        st.markdown("<p style='font-weight:600; margin-bottom:0.3rem;'>Create your account</p>", unsafe_allow_html=True)
+        with st.form("signup_form"):
+            nu = st.text_input("Choose Username", placeholder="Choose a username")
+            nf = st.text_input("Full name", placeholder="How should we address you?")
+            np = st.text_input("Password", type="password", placeholder="Create a password")
+            submit_signup = st.form_submit_button("Create account", type="primary", use_container_width=True)
+
+            if submit_signup:
+                nu, nf = nu.strip(), nf.strip()
+                if nu and np and nf:
+                    if create_user(nu, np, nf):
+                        st.success("Account created. You can now sign in.")
+                        st.session_state.auth_mode = "login"
+                    else:
+                        st.error("That username is already in use.")
+                else:
+                    st.warning("Complete all three fields.")
+
+        if st.button("Back to sign in", use_container_width=True):
+            st.session_state.auth_mode = "login"
+            st.rerun()
+
+    st.markdown("""
+    <div style="text-align:center; font-size:0.75rem; opacity:0.5; margin-top:1rem;">
+      Enterprise IT & Network Support Diagnostic Console
+    </div>
+    """, unsafe_allow_html=True)
     st.stop()
 
 # ----------------- CLEAN UI SETUP -----------------
@@ -448,11 +444,15 @@ with head_col1:
 with head_col2:
     selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
 
-# Hardened but balanced System Prompt covering IT & Network domains
+# Short, focused, actionable prompt
 SYSTEM_PROMPT = (
     ROLE_PROMPTS[selected_role] +
-    " STRICT INSTRUCTION: You must ONLY answer questions strictly related to networking, enterprise IT infrastructure, systems administration (Active Directory, Windows/Linux server triage), cybersecurity, and enterprise cloud. "
-    "If a user asks about non-IT or non-networking topics (such as general knowledge, cooking, movies, lifestyle, etc.), clearly decline by stating that you are an enterprise Network & IT Support Advisor."
+    " FORMAT RULES: Be extremely concise, direct, and actionable. "
+    "Do NOT write long intros, conversational filler, or verbose summaries. "
+    "Limit your response to a maximum of 3 to 5 core diagnostic steps or commands. "
+    "Use bullet points only when strictly necessary, and focus on practical troubleshooting commands. "
+    "STRICT INSTRUCTION: You must ONLY answer questions strictly related to networking, enterprise IT infrastructure, systems administration (Active Directory, Windows/Linux server triage), cybersecurity, and enterprise cloud. "
+    "If a user asks about non-IT or non-networking topics, decline in a single short sentence."
 )
 
 if st.session_state.is_guest:
@@ -544,7 +544,7 @@ if prompt:
                 model="openai/gpt-oss-20b",
                 messages=conversation_history,
                 temperature=0.2,
-                max_tokens=2048,
+                max_tokens=600,   # Compact response constraint
                 stream=True
             )
 
