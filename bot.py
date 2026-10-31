@@ -190,13 +190,13 @@ if "logged_in" not in st.session_state:
 if not st.session_state.get("logged_in", False):
     st.session_state.setdefault("auth_mode", "login")
 
-    # Compact UI styling for 100% viewport fitting
+    # Fix: proper padding-top and clean layout margins
     st.markdown("""
     <style>
     .block-container {
-        max-width: 580px !important;
-        padding-top: 1.2rem !important;
-        padding-bottom: 1rem !important;
+        max-width: 520px !important;
+        padding-top: clamp(2.2rem, 5vh, 3.8rem) !important;
+        padding-bottom: 1.5rem !important;
     }
     [data-testid="stAppViewContainer"] {
         background:
@@ -236,10 +236,13 @@ if not st.session_state.get("logged_in", False):
     </style>
     """, unsafe_allow_html=True)
 
+    # Title without streamlit header anchor
     st.markdown("""
-    <div style="text-align:center; margin: 0 auto 0.8rem;">
-      <h2 style="margin:0 0 0.2rem; font-size:1.6rem;">📡 Network & IT Support Advisor</h2>
-      <p style="margin:0; opacity:0.75; font-size:0.88rem;">
+    <div style="text-align:center; margin: 0 auto 1.1rem;">
+      <div style="font-size: 1.75rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.25rem;">
+        📡 Network & IT Support Advisor
+      </div>
+      <p style="margin: 0; opacity: 0.75; font-size: 0.88rem;">
         Enterprise AI-powered network & systems triage
       </p>
     </div>
@@ -312,7 +315,7 @@ if not st.session_state.get("logged_in", False):
             st.rerun()
 
     st.markdown("""
-    <div style="text-align:center; font-size:0.75rem; opacity:0.5; margin-top:1rem;">
+    <div style="text-align:center; font-size:0.75rem; opacity:0.5; margin-top:1.1rem;">
       Enterprise IT & Network Support Diagnostic Console
     </div>
     """, unsafe_allow_html=True)
@@ -544,7 +547,7 @@ if prompt:
                 model="openai/gpt-oss-20b",
                 messages=conversation_history,
                 temperature=0.2,
-                max_tokens=600,   # Compact response constraint
+                max_tokens=600,
                 stream=True
             )
 
