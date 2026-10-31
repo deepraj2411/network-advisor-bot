@@ -555,4 +555,15 @@ if prompt:
                 
             end_time = time.time()
             latency_ms = round((end_time - start_time) * 1000, 2)
-            metrics_info = f"⚡ **Inference Latency:** {latency_ms} ms
+            metrics_info = f"⚡ **Inference Latency:** {latency_ms} ms | **Engine:** Groq LPU"
+            
+            message_placeholder.markdown(full_response)
+            st.caption(metrics_info)
+
+            if st.session_state.is_guest:
+                st.session_state.guest_messages.append({"role": "assistant", "content": full_response, "metrics": metrics_info})
+            else:
+                save_message(st.session_state.current_chat_id, "assistant", full_response, metrics_info)
+
+        except Exception as e:
+            st.error(f"Inference Error: {str(e)}")
