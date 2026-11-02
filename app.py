@@ -163,7 +163,7 @@ init_db()
 st.set_page_config(page_title="Network & IT Support Advisor", page_icon="📡", layout="wide")
 
 if "theme_mode" not in st.session_state:
-    st.session_state.theme_mode = True
+    st.session_state.theme_mode = True  # True = Dark, False = Light
 
 # ----------------- SECURE URL PARAMETER LOGIN -----------------
 saved_token = st.query_params.get("session")
@@ -323,15 +323,9 @@ if not st.session_state.get("logged_in", False):
     """, unsafe_allow_html=True)
     st.stop()
 
-# ----------------- CLEAN UI SETUP & DYNAMIC THEME -----------------
-st.markdown("""
-<style>
-footer { visibility: hidden !important; }
-#MainMenu { visibility: hidden !important; }
-</style>
-""", unsafe_allow_html=True)
-
+# ----------------- DYNAMIC THEME CSS INJECTION -----------------
 if not st.session_state.theme_mode:
+    # Light Mode Colors
     st.markdown("""
     <style>
     .stApp {
@@ -361,6 +355,7 @@ if not st.session_state.theme_mode:
     </style>
     """, unsafe_allow_html=True)
 else:
+    # Dark Mode Colors
     st.markdown("""
     <style>
     .stApp {
@@ -426,7 +421,7 @@ with st.sidebar:
                 st.session_state.current_chat_id = c_id
                 st.rerun()
                 
-        # --- CHAT MANAGEMENT (RENAME, DELETE, EXPORT) ---
+        # --- CHAT MANAGEMENT ---
         if st.session_state.current_chat_id:
             with st.expander("🛠️ Manage Current Chat"):
                 chat_msgs = get_chat_messages(st.session_state.current_chat_id)
@@ -493,21 +488,20 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
-# --- MAIN CHAT HEADER, ROLE SWITCHER, AND TOP-RIGHT THEME TOGGLE ---
-head_col1, head_col2, head_col3 = st.columns([2.5, 1.2, 0.6])
-with head_col1:
-    st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network & IT Support Advisor</h2>", unsafe_allow_html=True)
+# --- TOP HEADER WITH VISIBLE THEME BUTTON ---
+h_col1, h_col2, h_col3 = st.columns([2.8, 1.2, 0.7])
+with h_col1:
+    st.markdown("<h2 style='text-align: left; margin-top: -15px; margin-bottom: 0px;'>📡 Network & IT Support Advisor</h2>", unsafe_allow_html=True)
     st.caption("Enterprise diagnostics, multi-vendor networking & systems triage")
 
-with head_col2:
+with h_col2:
     selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
 
-with head_col3:
-    # Top-right direct theme toggle button
-    toggle_label = "🌙 Dark" if st.session_state.theme_mode else "☀️ Light"
-    theme_val = st.toggle(toggle_label, value=st.session_state.theme_mode, key="top_theme_toggle")
-    if theme_val != st.session_state.theme_mode:
-        st.session_state.theme_mode = theme_val
+with h_col3:
+    # Direct click button - 100% visible guaranteed
+    theme_icon = "☀️ Light" if st.session_state.theme_mode else "🌙 Dark"
+    if st.button(theme_icon, use_container_width=True, help="Switch Light/Dark Mode"):
+        st.session_state.theme_mode = not st.session_state.theme_mode
         st.rerun()
 
 # Short, focused, actionable prompt
