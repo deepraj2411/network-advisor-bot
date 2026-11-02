@@ -162,6 +162,10 @@ init_db()
 # ----------------- APP CONFIG -----------------
 st.set_page_config(page_title="Network & IT Support Advisor", page_icon="📡", layout="wide")
 
+# Theme state management (Default: True = Dark Mode)
+if "theme_mode" not in st.session_state:
+    st.session_state.theme_mode = True
+
 # ----------------- SECURE URL PARAMETER LOGIN -----------------
 saved_token = st.query_params.get("session")
 
@@ -190,7 +194,6 @@ if "logged_in" not in st.session_state:
 if not st.session_state.get("logged_in", False):
     st.session_state.setdefault("auth_mode", "login")
 
-    # Fix: proper padding-top and clean layout margins
     st.markdown("""
     <style>
     .block-container {
@@ -236,7 +239,6 @@ if not st.session_state.get("logged_in", False):
     </style>
     """, unsafe_allow_html=True)
 
-    # Title without streamlit header anchor
     st.markdown("""
     <div style="text-align:center; margin: 0 auto 1.1rem;">
       <div style="font-size: 1.75rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.25rem;">
@@ -305,6 +307,7 @@ if not st.session_state.get("logged_in", False):
                     if create_user(nu, np, nf):
                         st.success("Account created. You can now sign in.")
                         st.session_state.auth_mode = "login"
+                        st.rerun()
                     else:
                         st.error("That username is already in use.")
                 else:
@@ -321,13 +324,66 @@ if not st.session_state.get("logged_in", False):
     """, unsafe_allow_html=True)
     st.stop()
 
-# ----------------- CLEAN UI SETUP -----------------
+# ----------------- CLEAN UI SETUP & DYNAMIC THEME -----------------
 st.markdown("""
 <style>
 footer { visibility: hidden !important; }
 #MainMenu { visibility: hidden !important; }
 </style>
 """, unsafe_allow_html=True)
+
+if not st.session_state.theme_mode:
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+        border-right: 1px solid #e2e8f0;
+    }
+    .stChatMessage {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+    }
+    .stTextInput>div>div>input, .stChatInput textarea {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    div[data-testid="stMarkdownContainer"] p, 
+    div[data-testid="stMarkdownContainer"] h1, 
+    div[data-testid="stMarkdownContainer"] h2, 
+    div[data-testid="stMarkdownContainer"] h3 {
+        color: #0f172a !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0f111a !important;
+        color: #e2e8f0 !important;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #161925 !important;
+        border-right: 1px solid #1f2438;
+    }
+    .stChatMessage {
+        background-color: #161925 !important;
+        border: 1px solid #272d45 !important;
+        border-radius: 8px !important;
+    }
+    .stTextInput>div>div>input, .stChatInput textarea {
+        background-color: #161925 !important;
+        color: #ffffff !important;
+        border: 1px solid #2e3552 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ----------------- MAIN CHAT INTERFACE -----------------
 api_key = os.environ.get("GROQ_API_KEY")
@@ -405,6 +461,12 @@ with st.sidebar:
     st.divider()
 
     with st.expander("⚙️ Account Settings"):
+        # Theme Mode Toggle for both registered users and guests
+        theme_toggle = st.toggle("🌙 Dark Mode", value=st.session_state.theme_mode)
+        if theme_toggle != st.session_state.theme_mode:
+            st.session_state.theme_mode = theme_toggle
+            st.rerun()
+
         if not st.session_state.is_guest:
             new_fname = st.text_input("Update Name", value=st.session_state.full_name)
             new_pwd = st.text_input("New Password (optional)", type="password")
