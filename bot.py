@@ -162,6 +162,9 @@ init_db()
 # ----------------- APP CONFIG -----------------
 st.set_page_config(page_title="Network & IT Support Advisor", page_icon="📡", layout="wide")
 
+if "theme_mode" not in st.session_state:
+    st.session_state.theme_mode = True  # True = Dark, False = Light
+
 # ----------------- SECURE URL PARAMETER LOGIN -----------------
 saved_token = st.query_params.get("session")
 
@@ -190,7 +193,6 @@ if "logged_in" not in st.session_state:
 if not st.session_state.get("logged_in", False):
     st.session_state.setdefault("auth_mode", "login")
 
-    # Fix: proper padding-top and clean layout margins
     st.markdown("""
     <style>
     .block-container {
@@ -236,7 +238,6 @@ if not st.session_state.get("logged_in", False):
     </style>
     """, unsafe_allow_html=True)
 
-    # Title without streamlit header anchor
     st.markdown("""
     <div style="text-align:center; margin: 0 auto 1.1rem;">
       <div style="font-size: 1.75rem; font-weight: 700; line-height: 1.3; margin-bottom: 0.25rem;">
@@ -305,6 +306,7 @@ if not st.session_state.get("logged_in", False):
                     if create_user(nu, np, nf):
                         st.success("Account created. You can now sign in.")
                         st.session_state.auth_mode = "login"
+                        st.rerun()
                     else:
                         st.error("That username is already in use.")
                 else:
@@ -321,18 +323,65 @@ if not st.session_state.get("logged_in", False):
     """, unsafe_allow_html=True)
     st.stop()
 
-# ----------------- CLEAN UI SETUP -----------------
-st.markdown("""
-<style>
-footer { visibility: hidden !important; }
-#MainMenu { visibility: hidden !important; }
-</style>
-""", unsafe_allow_html=True)
+# ----------------- DYNAMIC THEME CSS INJECTION -----------------
+if not st.session_state.theme_mode:
+    # Light Mode Colors
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #f8fafc !important;
+        color: #0f172a !important;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #ffffff !important;
+        border-right: 1px solid #e2e8f0;
+    }
+    .stChatMessage {
+        background-color: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 8px !important;
+    }
+    .stTextInput>div>div>input, .stChatInput textarea {
+        background-color: #ffffff !important;
+        color: #0f172a !important;
+        border: 1px solid #cbd5e1 !important;
+    }
+    div[data-testid="stMarkdownContainer"] p, 
+    div[data-testid="stMarkdownContainer"] h1, 
+    div[data-testid="stMarkdownContainer"] h2, 
+    div[data-testid="stMarkdownContainer"] h3 {
+        color: #0f172a !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+else:
+    # Dark Mode Colors
+    st.markdown("""
+    <style>
+    .stApp {
+        background-color: #0f111a !important;
+        color: #e2e8f0 !important;
+    }
+    section[data-testid="stSidebar"] {
+        background-color: #161925 !important;
+        border-right: 1px solid #1f2438;
+    }
+    .stChatMessage {
+        background-color: #161925 !important;
+        border: 1px solid #272d45 !important;
+        border-radius: 8px !important;
+    }
+    .stTextInput>div>div>input, .stChatInput textarea {
+        background-color: #161925 !important;
+        color: #ffffff !important;
+        border: 1px solid #2e3552 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 # ----------------- MAIN CHAT INTERFACE -----------------
 api_key = os.environ.get("GROQ_API_KEY")
 
-# --- EXPANDED ROLE DEFINITIONS (NETWORK + IT SUPPORT) ---
 ROLE_PROMPTS = {
     "IT Support Specialist": "You are a Tier-2/3 Enterprise IT Support Specialist. Focus on Active Directory, Windows Server, Group Policy (GPO), client OS anomalies, endpoint triage, print spoolers, DNS/DHCP client issues, and Microsoft 365/Exchange troubleshooting.",
     "Network Engineer": "You are an expert IT & Network Engineer. Focus on routing protocols (OSPF, BGP), switching, VLANs, TCP/IP, and enterprise hardware diagnostics.",
@@ -372,7 +421,7 @@ with st.sidebar:
                 st.session_state.current_chat_id = c_id
                 st.rerun()
                 
-        # --- CHAT MANAGEMENT (RENAME, DELETE, EXPORT) ---
+        # --- CHAT MANAGEMENT ---
         if st.session_state.current_chat_id:
             with st.expander("🛠️ Manage Current Chat"):
                 chat_msgs = get_chat_messages(st.session_state.current_chat_id)
@@ -439,13 +488,21 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
-# --- MAIN CHAT HEADER AND ROLE SWITCHER ---
-head_col1, head_col2 = st.columns([3, 1.2])
-with head_col1:
-    st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network & IT Support Advisor</h2>", unsafe_allow_html=True)
+# --- TOP HEADER WITH VISIBLE THEME BUTTON ---
+h_col1, h_col2, h_col3 = st.columns([2.8, 1.2, 0.7])
+with h_col1:
+    st.markdown("<h2 style='text-align: left; margin-top: -15px; margin-bottom: 0px;'>📡 Network & IT Support Advisor</h2>", unsafe_allow_html=True)
     st.caption("Enterprise diagnostics, multi-vendor networking & systems triage")
-with head_col2:
+
+with h_col2:
     selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
+
+with h_col3:
+    # Direct click button - 100% visible guaranteed
+    theme_icon = "☀️ Light" if st.session_state.theme_mode else "🌙 Dark"
+    if st.button(theme_icon, use_container_width=True, help="Switch Light/Dark Mode"):
+        st.session_state.theme_mode = not st.session_state.theme_mode
+        st.rerun()
 
 # Short, focused, actionable prompt
 SYSTEM_PROMPT = (
