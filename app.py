@@ -162,7 +162,6 @@ init_db()
 # ----------------- APP CONFIG -----------------
 st.set_page_config(page_title="Network & IT Support Advisor", page_icon="📡", layout="wide")
 
-# Theme state management (Default: True = Dark Mode)
 if "theme_mode" not in st.session_state:
     st.session_state.theme_mode = True
 
@@ -388,7 +387,6 @@ else:
 # ----------------- MAIN CHAT INTERFACE -----------------
 api_key = os.environ.get("GROQ_API_KEY")
 
-# --- EXPANDED ROLE DEFINITIONS (NETWORK + IT SUPPORT) ---
 ROLE_PROMPTS = {
     "IT Support Specialist": "You are a Tier-2/3 Enterprise IT Support Specialist. Focus on Active Directory, Windows Server, Group Policy (GPO), client OS anomalies, endpoint triage, print spoolers, DNS/DHCP client issues, and Microsoft 365/Exchange troubleshooting.",
     "Network Engineer": "You are an expert IT & Network Engineer. Focus on routing protocols (OSPF, BGP), switching, VLANs, TCP/IP, and enterprise hardware diagnostics.",
@@ -461,12 +459,6 @@ with st.sidebar:
     st.divider()
 
     with st.expander("⚙️ Account Settings"):
-        # Theme Mode Toggle for both registered users and guests
-        theme_toggle = st.toggle("🌙 Dark Mode", value=st.session_state.theme_mode)
-        if theme_toggle != st.session_state.theme_mode:
-            st.session_state.theme_mode = theme_toggle
-            st.rerun()
-
         if not st.session_state.is_guest:
             new_fname = st.text_input("Update Name", value=st.session_state.full_name)
             new_pwd = st.text_input("New Password (optional)", type="password")
@@ -501,13 +493,22 @@ if not api_key:
 
 client = Groq(api_key=api_key)
 
-# --- MAIN CHAT HEADER AND ROLE SWITCHER ---
-head_col1, head_col2 = st.columns([3, 1.2])
+# --- MAIN CHAT HEADER, ROLE SWITCHER, AND TOP-RIGHT THEME TOGGLE ---
+head_col1, head_col2, head_col3 = st.columns([2.5, 1.2, 0.6])
 with head_col1:
     st.markdown("<h2 style='text-align: left; margin-top: -20px;'>📡 Network & IT Support Advisor</h2>", unsafe_allow_html=True)
     st.caption("Enterprise diagnostics, multi-vendor networking & systems triage")
+
 with head_col2:
     selected_role = st.selectbox("🎭 Expert Mode", list(ROLE_PROMPTS.keys()), label_visibility="collapsed")
+
+with head_col3:
+    # Top-right direct theme toggle button
+    toggle_label = "🌙 Dark" if st.session_state.theme_mode else "☀️ Light"
+    theme_val = st.toggle(toggle_label, value=st.session_state.theme_mode, key="top_theme_toggle")
+    if theme_val != st.session_state.theme_mode:
+        st.session_state.theme_mode = theme_val
+        st.rerun()
 
 # Short, focused, actionable prompt
 SYSTEM_PROMPT = (
